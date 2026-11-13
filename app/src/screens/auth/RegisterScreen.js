@@ -6,42 +6,29 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
+  Pressable,
   Alert,
-  Image,
   Animated,
-  Dimensions,
-  SafeAreaView,
-  TextInput,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
+import { User, Lock, Car, X, ArrowRight } from 'lucide-react-native';
 import { register, clearError } from '../../redux/slices/authSlice';
 import { validatePhoneNumber, validatePassword } from '../../utils/validators';
 import { useTheme } from '../../context/ThemeContext';
-
-const { width, height } = Dimensions.get('window');
+import { Button, Input, Header, SelectCard, InlineMessage } from '../../components/ui';
+import { fonts, spacing, typography } from '../../theme/tokens';
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.auth);
-  const { isDark } = useTheme();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
-  const palette = React.useMemo(() => ({
-    bg: isDark ? '#0F0F0F' : '#FFFFFF',
-    cards: isDark ? '#1A1A1A' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#111111',
-    secondary: isDark ? '#8A8A8A' : '#6A6A6A',
-    accent: '#FFC107',
-    border: isDark ? '#333333' : '#F0F0F0',
-  }), [isDark]);
-
-  const styles = React.useMemo(() => createStyles(palette), [palette]);
-  
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
@@ -54,13 +41,10 @@ const RegisterScreen = () => {
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -72,12 +56,6 @@ const RegisterScreen = () => {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
         useNativeDriver: true,
       }),
     ]).start();
@@ -130,7 +108,7 @@ const RegisterScreen = () => {
     if (!formData.phoneNumber) {
       newErrors.phoneNumber = 'Phone number is required';
     } else if (!validatePhoneNumber(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Invalid phone number format (e.g., 03XXXXXXXXX)';
+      newErrors.phoneNumber = 'Enter a valid mobile number, for example 3001234567';
     }
     
     if (!formData.password) {
@@ -146,17 +124,17 @@ const RegisterScreen = () => {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // Return the fresh errors: the `errors` state is not updated until the next render.
+    return newErrors;
   };
 
   const handleRegister = async () => {
     dispatch(clearError());
     
-    if (!validate()) {
-      const firstError = Object.keys(errors)[0];
-      if (firstError) {
-        Alert.alert('Validation Error', errors[firstError]);
-      }
+    const validationErrors = validate();
+    const firstError = Object.keys(validationErrors)[0];
+    if (firstError) {
+      Alert.alert('Validation Error', validationErrors[firstError]);
       return;
     }
 
@@ -216,568 +194,142 @@ const RegisterScreen = () => {
     }
   };
 
-  const renderInput = (field, label, placeholder, icon, options = {}) => {
-    const isPassword = field === 'password' || field === 'confirmPassword';
-    const isSecure = isPassword && 
-      (field === 'password' ? !showPassword : !showConfirmPassword);
-    const togglePassword = field === 'password' 
-      ? () => setShowPassword(!showPassword)
-      : () => setShowConfirmPassword(!showConfirmPassword);
-
-    return (
-      <Animated.View
-        style={[
-          styles.inputWrapper,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        <Text style={styles.inputLabel}>{label}</Text>
-        <View style={[
-          styles.inputContainer,
-          errors[field] && styles.inputContainerError
-        ]}>
-          <View style={styles.inputIcon}>
-            <Icon name={icon} size={22} color={palette.secondary} />
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder={placeholder}
-            placeholderTextColor={palette.secondary}
-            value={formData[field]}
-            onChangeText={(value) => handleChange(field, value)}
-            secureTextEntry={isSecure}
-            keyboardType={options.keyboardType || 'default'}
-            autoCapitalize={options.autoCapitalize || 'none'}
-            editable={!isSubmitting}
-            {...options}
-          />
-          {isPassword && (
-            <TouchableOpacity onPress={togglePassword} style={styles.eyeButton}>
-              <Icon 
-                name={isSecure ? 'visibility-off' : 'visibility'} 
-                size={22} 
-                color={palette.secondary} 
-              />
-            </TouchableOpacity>
-          )}
-          {!isPassword && formData[field]?.length > 0 && (
-            <TouchableOpacity
-              onPress={() => handleChange(field, '')}
-              style={styles.clearButton}
-            >
-              <Icon name="close" size={18} color={palette.secondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-        {errors[field] && (
-          <Text style={styles.errorText}>{errors[field]}</Text>
-        )}
-      </Animated.View>
-    );
-  };
+  const clearIcon = (field) => (formData[field]?.length > 0 ? X : null);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={palette.bg} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.background} />
+      <Header
+        title="Create account"
+        subtitle="Join Raftar and start your journey"
+        style={styles.header}
+        onBackPress={() => navigation.navigate('Login')}
+      />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.scrollContainer}
+          contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo Section */}
-          <Animated.View
-            style={[
-              styles.logoContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }],
-              },
-            ]}
-          >
-            
-          </Animated.View>
-
-          {/* Welcome Header */}
-          <Animated.View
-            style={[
-              styles.welcomeContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            <Text style={styles.welcomeTitle}>Create Account</Text>
-            <Text style={styles.welcomeSubtitle}>Join our community and start your journey</Text>
-            <Image 
-              source={require('../../assets/raftar.png')} 
-              style={styles.logo}
-              resizeMode="contain"
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+            <Input
+              label="Full name"
+              icon={User}
+              placeholder="Enter your full name"
+              value={formData.name}
+              onChangeText={(v) => handleChange('name', v)}
+              autoCapitalize="words"
+              textContentType="name"
+              autoComplete="name"
+              editable={!isSubmitting}
+              error={errors.name}
+              iconRight={clearIcon('name')}
+              iconRightLabel="Clear name"
+              onIconPress={() => handleChange('name', '')}
             />
-          </Animated.View>
+            <Input
+              label="Phone number"
+              prefix="+92"
+              placeholder="3001234567"
+              value={formData.phoneNumber}
+              onChangeText={(v) => handleChange('phoneNumber', v)}
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+              editable={!isSubmitting}
+              error={errors.phoneNumber}
+              iconRight={clearIcon('phoneNumber')}
+              iconRightLabel="Clear phone number"
+              onIconPress={() => handleChange('phoneNumber', '')}
+            />
+            <Input
+              label="Password"
+              icon={Lock}
+              placeholder="At least 6 characters"
+              value={formData.password}
+              onChangeText={(v) => handleChange('password', v)}
+              secureTextEntry
+              autoCapitalize="none"
+              textContentType="newPassword"
+              editable={!isSubmitting}
+              error={errors.password}
+            />
+            <Input
+              label="Confirm password"
+              icon={Lock}
+              placeholder="Re-enter your password"
+              value={formData.confirmPassword}
+              onChangeText={(v) => handleChange('confirmPassword', v)}
+              secureTextEntry
+              autoCapitalize="none"
+              textContentType="newPassword"
+              editable={!isSubmitting}
+              error={errors.confirmPassword}
+            />
 
-          {/* Form */}
-          <View style={styles.form}>
-            {renderInput('name', 'Full Name *', 'Enter your full name', 'person')}
-            {renderInput('phoneNumber', 'Phone Number *', '03XX-XXXXXXX', 'phone', { keyboardType: 'phone-pad' })}
-            {renderInput('password', 'Password *', 'Create a password (min 6 chars)', 'lock')}
-            {renderInput('confirmPassword', 'Confirm Password *', 'Confirm your password', 'lock-outline')}
-
-            {/* Role Selection */}
-            <Animated.View
-              style={[
-                styles.roleSection,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
-                },
-              ]}
-            >
-              <Text style={styles.roleLabel}>Register as *</Text>
-              <View style={styles.roleButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.roleButton,
-                    formData.role === 'passenger' && styles.roleButtonActive
-                  ]}
-                  onPress={() => handleChange('role', 'passenger')}
-                  disabled={isSubmitting}
-                  activeOpacity={0.7}
-                >
-                  <Icon 
-                    name="person" 
-                    size={24} 
-                    color={formData.role === 'passenger' ? palette.accent : palette.secondary} 
-                  />
-                  <Text style={[
-                    styles.roleText,
-                    formData.role === 'passenger' && styles.roleTextActive
-                  ]}>Passenger</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.roleButton,
-                    formData.role === 'driver' && styles.roleButtonActive
-                  ]}
-                  onPress={() => handleChange('role', 'driver')}
-                  disabled={isSubmitting}
-                  activeOpacity={0.7}
-                >
-                  <Icon 
-                    name="directions-car" 
-                    size={24} 
-                    color={formData.role === 'driver' ? palette.accent : palette.secondary} 
-                  />
-                  <Text style={[
-                    styles.roleText,
-                    formData.role === 'driver' && styles.roleTextActive
-                  ]}>Driver</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-
-            {/* Profile Photo Input Field */}
-            {/* <Animated.View
-              style={[
-                styles.inputWrapper,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
-                },
-              ]}
-            >
-              <Text style={styles.inputLabel}>Profile Photo</Text>
-              <TouchableOpacity
-                style={[
-                  styles.inputContainer,
-                  styles.photoInputContainer,
-                  profilePhoto && styles.photoInputActive
-                ]}
-                onPress={pickImage}
+            <Text style={styles.sectionLabel}>Register as</Text>
+            <View style={styles.roleRow} accessibilityRole="radiogroup">
+              <SelectCard
+                style={styles.roleCard}
+                icon={User}
+                title="Passenger"
+                subtitle="Book rides and parcels"
+                selected={formData.role === 'passenger'}
+                onPress={() => handleChange('role', 'passenger')}
                 disabled={isSubmitting}
-                activeOpacity={0.7}
-              >
-                <View style={styles.inputIcon}>
-                  <Icon name="photo-camera" size={22} color="#666" />
-                </View>
-                <View style={styles.photoInputContent}>
-                  {profilePhoto ? (
-                    <>
-                      <Image 
-                        source={{ uri: profilePhoto.uri }} 
-                        style={styles.photoPreview}
-                      />
-                      <Text style={styles.photoInputText} numberOfLines={1}>
-                        {profilePhoto.uri.split('/').pop() || 'Photo selected'}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.photoPlaceholderText}>
-                      Tap to select profile photo
-                    </Text>
-                  )}
-                </View>
-                {profilePhoto && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setProfilePhoto(null);
-                      setFormData({ ...formData, profilePhoto: '' });
-                    }}
-                    style={styles.clearButton}
-                  >
-                    <Icon name="close" size={18} color="#888" />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
-              <Text style={styles.photoHint}>Optional - Add a profile photo</Text>
-            </Animated.View> */}
-
-            {/* Error Container */}
-            {error && (
-              <Animated.View
-                style={[
-                  styles.errorContainer,
-                  {
-                    opacity: fadeAnim,
-                  },
-                ]}
-              >
-                <Icon name="error-outline" size={20} color="#FF3B30" />
-                <Text style={styles.errorText}>{error}</Text>
-              </Animated.View>
-            )}
-
-            {/* Register Button */}
-            <Animated.View
-              style={[
-                styles.buttonWrapper,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.registerButton,
-                  isSubmitting && styles.registerButtonDisabled
-                ]}
-                onPress={handleRegister}
+              />
+              <SelectCard
+                style={styles.roleCard}
+                icon={Car}
+                title="Driver"
+                subtitle="Drive and earn"
+                selected={formData.role === 'driver'}
+                onPress={() => handleChange('role', 'driver')}
                 disabled={isSubmitting}
-                activeOpacity={0.8}
-              >
-                {isSubmitting ? (
-                  <View style={styles.loadingContainer}>
-                    <View style={styles.loader} />
-                    <Text style={styles.registerButtonText}>Creating Account...</Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={styles.registerButtonText}>Create Account</Text>
-                    <Icon name="arrow-forward" size={24} color={palette.bg} />
-                  </>
-                )}
-              </TouchableOpacity>
-            </Animated.View>
+              />
+            </View>
 
-            {/* Login Link */}
-            <Animated.View
-              style={[
-                styles.loginContainer,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
-                },
-              ]}
-            >
-              <Text style={styles.loginText}>Already have an account? </Text>
-              <TouchableOpacity 
+            {error ? <InlineMessage style={styles.errorBox}>{error}</InlineMessage> : null}
+
+            <Button
+              title="Create account"
+              iconRight={ArrowRight}
+              onPress={handleRegister}
+              loading={isSubmitting}
+              style={styles.submit}
+            />
+
+            <View style={styles.loginRow}>
+              <Text style={styles.muted}>Already have an account? </Text>
+              <Pressable
                 onPress={() => navigation.navigate('Login')}
                 disabled={isSubmitting}
+                accessibilityRole="link"
+                hitSlop={12}
               >
-                <Text style={styles.loginLink}>Sign In</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
+                <Text style={styles.link}>Sign in</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-const createStyles = (palette) => StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: palette.bg,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: palette.bg,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 10,
-    paddingBottom: 30,
-  },
-  
-  // Logo Section
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 46,
-    marginTop: 5,
-  },
-  logo: {
-    width: 120,
-    height: 80,
-  },
-
-  // Welcome Header
-  welcomeContainer: {
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: palette.text,
-    letterSpacing: -0.5,
-    lineHeight: 36,
-  },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: palette.secondary,
-    marginTop: 4,
-    fontWeight: '400',
-    lineHeight: 20,
-  },
-
-  // Form
-  form: {
-    flex: 1,
-  },
-  inputWrapper: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    color: palette.text,
-    fontSize: 14,
-    marginBottom: 6,
-    fontWeight: '600',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: palette.cards,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    borderColor: palette.border,
-    height: 54,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  inputContainerError: {
-    borderColor: '#FF3B30',
-    borderWidth: 2,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: palette.text,
-    height: '100%',
-    fontWeight: '400',
-  },
-  clearButton: {
-    padding: 4,
-  },
-  eyeButton: {
-    padding: 4,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 2,
-    marginLeft: 4,
-  },
-
-  // Role Selection
-  roleSection: {
-    marginBottom: 18,
-    marginTop: 4,
-  },
-  roleLabel: {
-    color: palette.text,
-    fontSize: 14,
-    marginBottom: 10,
-    fontWeight: '600',
-  },
-  roleButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  roleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    backgroundColor: palette.cards,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: palette.border,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  roleButtonActive: {
-    borderColor: palette.accent,
-    backgroundColor: palette.cards,
-    shadowColor: palette.accent,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  roleText: {
-    color: palette.secondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  roleTextActive: {
-    color: palette.text,
-    fontWeight: '600',
-  },
-
-  // Profile Photo Input
-  photoInputContainer: {
-    paddingVertical: 8,
-    height: 54,
-  },
-  photoInputActive: {
-    borderColor: palette.accent,
-    backgroundColor: palette.cards,
-  },
-  photoInputContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  photoPreview: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  photoInputText: {
-    fontSize: 14,
-    color: palette.text,
-    flex: 1,
-  },
-  photoPlaceholderText: {
-    fontSize: 14,
-    color: palette.secondary,
-    flex: 1,
-  },
-  photoHint: {
-    color: palette.secondary,
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-
-  // Register Button
-  buttonWrapper: {
-    marginTop: 6,
-  },
-  registerButton: {
-    backgroundColor: palette.text,
-    borderRadius: 14,
-    height: 56,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-    gap: 8,
-  },
-  registerButtonDisabled: {
-    opacity: 0.7,
-  },
-  registerButtonText: {
-    color: palette.bg,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loader: {
-    width: 22,
-    height: 22,
-    borderWidth: 2.5,
-    borderColor: palette.bg,
-    borderTopColor: palette.accent,
-    borderRadius: 11,
-    marginRight: 12,
-  },
-
-  // Login Link
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 22,
-    paddingBottom: 10,
-  },
-  loginText: {
-    color: palette.secondary,
-    fontSize: 15,
-    fontWeight: '400',
-  },
-  loginLink: {
-    color: palette.accent,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
-  // Error Container
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: palette.cards,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 14,
-    borderWidth: 1.5,
-    borderColor: '#FFD1D1',
-    gap: 8,
-  },
+const createStyles = (colors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  header: { paddingHorizontal: spacing.screenAuth },
+  scroll: { flexGrow: 1, paddingHorizontal: spacing.screenAuth, paddingTop: spacing.l, paddingBottom: spacing.xxl },
+  sectionLabel: { ...typography.small, fontFamily: fonts.semibold, color: colors.text, marginBottom: 8 },
+  roleRow: { flexDirection: 'row', gap: spacing.l, marginBottom: spacing.xxl },
+  roleCard: { flex: 1, minWidth: 0 },
+  errorBox: { marginBottom: spacing.xl },
+  submit: { marginTop: spacing.xs },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xxl, minHeight: 44 },
+  muted: { ...typography.body, color: colors.textSecondary },
+  link: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.accent },
 });
 
 export default RegisterScreen;

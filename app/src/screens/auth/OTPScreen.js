@@ -1,40 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import OTPTextInput from 'react-native-otp-textinput';
-import Button from '../../components/common/Button';
+import { ShieldCheck } from 'lucide-react-native';
 import { verifyOTP, sendOTP } from '../../redux/slices/authSlice';
 import api from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
+import { Button, Header, OtpInput } from '../../components/ui';
+import { fonts, radius, spacing, typography } from '../../theme/tokens';
 
 const OTPScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch();
-  const otpInput = useRef(null);
-  const { isDark } = useTheme();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
-  const palette = React.useMemo(() => ({
-    bg: isDark ? '#0F0F0F' : '#FFFFFF',
-    cards: isDark ? '#1A1A1A' : '#F5F5F5',
-    text: isDark ? '#FFFFFF' : '#111111',
-    secondary: isDark ? '#8A8A8A' : '#6A6A6A',
-    accent: '#FFC107',
-    border: isDark ? '#333333' : '#F0F0F0',
-  }), [isDark]);
-
-  const styles = React.useMemo(() => createStyles(palette), [palette]);
-  
   const { phoneNumber } = route.params || {};
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -94,168 +85,66 @@ const OTPScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color={palette.text} />
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Icon name="verified" size={60} color={palette.accent} />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.background} />
+      <Header title="" style={styles.header} />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.content}>
+          <View style={styles.iconBox}>
+            <ShieldCheck size={36} color={colors.accent} strokeWidth={2} />
           </View>
-          <Text style={styles.title}>Verify Your Phone</Text>
+          <Text style={styles.title} accessibilityRole="header">Verify your phone</Text>
           <Text style={styles.subtitle}>
-            We&apos;ve sent a verification code to {'\n'}
-            <Text style={styles.phoneNumber}>{phoneNumber}</Text>
+            Enter the 6-digit code we sent to{' '}
+            <Text style={styles.phone}>{/^3\d{9}$/.test(phoneNumber || '') ? `+92 ${phoneNumber}` : phoneNumber}</Text>
           </Text>
+
+          <OtpInput value={otp} onChangeText={setOtp} autoFocus accessibilityLabel="Six-digit verification code" />
+
+          <Button title="Verify" onPress={handleVerifyOTP} loading={loading} style={styles.verify} />
+
+          <View style={styles.resendRow}>
+            <Text style={styles.muted}>Didn&apos;t get the code? </Text>
+            {canResend ? (
+              <Pressable onPress={handleResendOTP} accessibilityRole="button" hitSlop={12}>
+                <Text style={styles.link}>Resend code</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.timerPill} accessibilityLabel={`Resend available in ${resendTimer} seconds`}>
+                <Text style={styles.timerText}>Resend in 0:{String(resendTimer).padStart(2, '0')}</Text>
+              </View>
+            )}
+          </View>
+
+          <Pressable style={styles.change} onPress={() => navigation.goBack()} accessibilityRole="button" hitSlop={8}>
+            <Text style={styles.changeText}>Change phone number</Text>
+          </Pressable>
         </View>
-
-        <View style={styles.otpContainer}>
-          <OTPTextInput
-            ref={otpInput}
-            handleTextChange={setOtp}
-            inputCount={6}
-            autoFocus
-            tintColor={palette.accent}
-            offTintColor={palette.border}
-            textInputStyle={styles.otpInput}
-            containerStyle={styles.otpContainerStyle}
-          />
-        </View>
-
-        <Button
-          title="Verify"
-          onPress={handleVerifyOTP}
-          loading={loading}
-          size="large"
-          style={styles.verifyButton}
-        />
-
-        <View style={styles.resendContainer}>
-          <Text style={styles.resendText}>
-            Didn&apos;t receive the code? 
-          </Text>
-          {canResend ? (
-            <TouchableOpacity onPress={handleResendOTP}>
-              <Text style={styles.resendLink}> Resend</Text>
-            </TouchableOpacity>
-          ) : (
-            <Text style={styles.timerText}> Resend in {resendTimer}s</Text>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={styles.changeNumber}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.changeNumberText}>Change Phone Number</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
-const createStyles = (palette) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: palette.bg,
+const createStyles = (colors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  header: { paddingHorizontal: spacing.screenAuth },
+  content: { flex: 1, paddingHorizontal: spacing.screenAuth, paddingTop: spacing.l },
+  iconBox: {
+    width: 72, height: 72, borderRadius: radius.cardLarge, backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xxl,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 40,
-  },
-  backButton: {
-    padding: 8,
-    alignSelf: 'flex-start',
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: palette.cards,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: palette.accent,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: palette.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: palette.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  phoneNumber: {
-    color: palette.accent,
-    fontWeight: 'bold',
-  },
-  otpContainer: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  otpContainerStyle: {
-    width: '100%',
-    justifyContent: 'center',
-  },
-  otpInput: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 2,
-    backgroundColor: palette.cards,
-    color: palette.text,
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  verifyButton: {
-    marginBottom: 20,
-  },
-  resendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  resendText: {
-    color: palette.secondary,
-    fontSize: 14,
-  },
-  resendLink: {
-    color: palette.accent,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  timerText: {
-    color: palette.secondary,
-    fontSize: 14,
-  },
-  changeNumber: {
-    alignSelf: 'center',
-    marginTop: 20,
-  },
-  changeNumberText: {
-    color: palette.secondary,
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
+  title: { ...typography.display, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textSecondary, marginTop: spacing.s, marginBottom: spacing.xxl },
+  phone: { fontFamily: fonts.bold, color: colors.text },
+  verify: { marginTop: spacing.xxl },
+  resendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.xxl, minHeight: 44 },
+  muted: { ...typography.body, color: colors.textSecondary },
+  link: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.accent },
+  timerPill: { backgroundColor: colors.surface, borderRadius: radius.chip, paddingHorizontal: spacing.l, paddingVertical: 6 },
+  timerText: { ...typography.small, fontFamily: fonts.semibold, color: colors.text },
+  change: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', marginTop: spacing.s },
+  changeText: { ...typography.small, color: colors.textSecondary, textDecorationLine: 'underline' },
 });
 
 export default OTPScreen;

@@ -1,8 +1,6 @@
 import React, { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
-// Keep the native splash up until Inter has loaded (hidden in App below).
-SplashScreen.preventAutoHideAsync().catch(() => {});
 import { LogBox } from 'react-native';
 
 // --- Error Logging Setup ---
@@ -52,6 +50,9 @@ import {
   Inter_900Black,
 } from '@expo-google-fonts/inter';
 
+// Keep the native splash up until Inter has loaded (hidden in App below).
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -93,4 +94,16 @@ export default function App() {
   return (
     <Provider store={store}>
       <SafeAreaProvider>
-       
+        <StatusBar style="dark" />
+        <ThemeProvider>
+          <SocketProvider>
+            <NotificationProvider>
+              {/* AppNavigator contains NavigationContainer */}
+              <AppNavigator />
+            </NotificationProvider>
+          </SocketProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </Provider>
+  );
+}

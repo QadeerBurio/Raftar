@@ -12,7 +12,7 @@ const EmptyState = ({ icon, title, description, buttonText, onButtonPress, style
   return (
     <View style={[styles.container, style]}>
       <View style={[styles.iconBox, { backgroundColor: colors.surface }]}>
-        {renderIcon(icon || Inbox, { size: 40, color: colors.primary })}
+        {renderIcon(icon || Inbox, { size: 40, color: colors.accent })}
       </View>
       <Text style={[typography.cardTitle, styles.title, { color: colors.text }]}>{title || 'Nothing here yet'}</Text>
       <Text style={[typography.body, styles.description, { color: colors.textSecondary }]}>

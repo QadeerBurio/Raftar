@@ -45,7 +45,7 @@ const SelectCard = ({
       ) : null}
       {icon ? (
         <View style={layout === 'row' ? styles.iconRow : styles.iconCol}>
-          {renderIcon(icon, { size: 26, color: colors.primary })}
+          {renderIcon(icon, { size: 26, color: selected ? palette.primary : colors.accent })}
         </View>
       ) : null}
       <View style={layout === 'row' ? styles.flex : null}>

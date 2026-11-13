@@ -23,7 +23,7 @@ const IconTile = ({ icon, size = 'md', tint, bg, color, style }) => {
         style,
       ]}
     >
-      {renderIcon(icon, { size: Math.round(dim * 0.5), color: color || (t ? t.icon : colors.primary) })}
+      {renderIcon(icon, { size: Math.round(dim * 0.5), color: color || (t ? t.icon : colors.accent) })}
     </View>
   );
 };

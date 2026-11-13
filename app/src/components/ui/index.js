@@ -14,3 +14,5 @@ export { default as Badge } from './Badge';
 export { default as Logo } from './Logo';
 export { default as Card } from './Card';
 export { renderIcon } from './icons';
+export { default as OtpInput } from './OtpInput';
+export { default as InlineMessage } from './InlineMessage';

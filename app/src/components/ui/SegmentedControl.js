@@ -20,7 +20,7 @@ const SegmentedControl = ({ options = [], value, onChange, style }) => {
             accessibilityLabel={item.label}
             style={[styles.segment, selected && [styles.selected, { backgroundColor: colors.card }]]}
           >
-            <Text style={[styles.label, { color: selected ? colors.primary : colors.textSecondary }, selected && styles.labelSelected]} numberOfLines={1}>
+            <Text style={[styles.label, { color: selected ? colors.accent : colors.textSecondary }, selected && styles.labelSelected]} numberOfLines={1}>
               {item.label}
             </Text>
           </Pressable>

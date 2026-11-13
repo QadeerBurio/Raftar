@@ -11,7 +11,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { spacing, typography } from '../../theme/tokens';
 import {
   AppText, Button, Input, RouteInput, Chip, SelectCard, SegmentedControl, BottomSheet,
-  Header, EmptyState, IconTile, IconButton, Badge, Logo, Card,
+  Header, EmptyState, IconTile, IconButton, Badge, Logo, Card, OtpInput, InlineMessage,
 } from '../../components/ui';
 
 const Section = ({ title, children, colors }) => (
@@ -29,6 +29,7 @@ const UiKitScreen = () => {
   const [tariff, setTariff] = useState('car');
   const [seg, setSeg] = useState('upfront');
   const [surge, setSurge] = useState('off');
+  const [otp, setOtp] = useState('');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
@@ -74,7 +75,7 @@ const UiKitScreen = () => {
               <Button title="Small" size="small" onPress={() => {}} />
               <Button title="Small secondary" size="small" variant="secondary" onPress={() => {}} />
             </View>
-            <AppText variant="small" tone="muted">Legacy variants "outline" and "danger" render as secondary:</AppText>
+            <AppText variant="small" tone="muted">Legacy variants outline and danger render as secondary:</AppText>
             <Button title="Legacy outline" variant="outline" onPress={() => {}} />
           </View>
         </Section>
@@ -87,6 +88,23 @@ const UiKitScreen = () => {
           <Input placeholder="Search places" icon={Search} iconRight={Plus} iconRightLabel="Add stop" onIconPress={() => {}} />
           <Input placeholder="Disabled field" editable={false} />
           <Input placeholder="Notes for the driver" multiline numberOfLines={4} />
+        </Section>
+
+        <Section title="OtpInput" colors={colors}>
+          <View style={styles.stack}>
+            <OtpInput value={otp} onChangeText={setOtp} />
+            <OtpInput value="1234" onChangeText={() => {}} />
+            <OtpInput value="12" onChangeText={() => {}} error />
+          </View>
+        </Section>
+
+        <Section title="InlineMessage" colors={colors}>
+          <View style={styles.stack}>
+            <InlineMessage>Passwords do not match.</InlineMessage>
+            <InlineMessage tone="info">Your code expires in 60 seconds.</InlineMessage>
+            <InlineMessage tone="success">Documents uploaded.</InlineMessage>
+            <InlineMessage tone="pending">Verification pending review.</InlineMessage>
+          </View>
         </Section>
 
         <Section title="RouteInput" colors={colors}>

@@ -41,7 +41,7 @@ const Input = ({
         style={[
           styles.field,
           { backgroundColor: colors.surface, borderColor: 'transparent' },
-          focused && { borderColor: colors.primary },
+          focused && { borderColor: colors.accent },
           error && { borderColor: colors.warning },
           multiline && styles.multilineField,
         ]}

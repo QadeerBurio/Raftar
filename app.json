@@ -13,7 +13,7 @@
     "splash": {
       "image": "./assets/raftar.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#013E37"
     },
     
     "ios": {
@@ -23,7 +23,7 @@
       "splash": {
         "image": "./assets/raftar.png",
         "resizeMode": "contain",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#013E37"
       },
       "infoPlist": {
         "UIBackgroundModes": [
@@ -48,7 +48,7 @@
       "splash": {
         "image": "./assets/raftar.png",
         "resizeMode": "contain",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#013E37"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
