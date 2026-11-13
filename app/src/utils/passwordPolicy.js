@@ -1,0 +1,1 @@
+export const passwordValid = p => typeof p === 'string' && p.length >= 6 && Array.from(p).reduce((n, c) => n + (c.codePointAt(0) <= 127 ? 1 : c.codePointAt(0) <= 2047 ? 2 : c.codePointAt(0) <= 65535 ? 3 : 4), 0) <= 72;

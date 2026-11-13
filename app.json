@@ -1,0 +1,106 @@
+{
+  "expo": {
+    "name": "Raftar",
+    "slug": "Raftar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "raftar",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    
+    "icon": "./assets/raftar.png",
+    
+    "splash": {
+      "image": "./assets/raftar.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    
+    "ios": {
+      "bundleIdentifier": "com.raftar.app",
+      "supportsTablet": true,
+      "icon": "./assets/raftar.png",
+      "splash": {
+        "image": "./assets/raftar.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      },
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "voip",
+          "audio",
+          "fetch",
+          "remote-notification"
+        ]
+      },
+      "bitcode": false
+    },
+    
+    "android": {
+      "package": "com.raftar.app",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "icon": "./assets/raftar.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/raftar.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "splash": {
+        "image": "./assets/raftar.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.MANAGE_OWN_CALLS",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.BLUETOOTH"
+      ]
+    },
+    
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen",
+      "expo-font",
+      "@react-native-community/datetimepicker",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Allow Raftar to access your camera for video calls.",
+          "microphonePermission": "Allow Raftar to access your microphone for voice calls."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          },
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ],
+    
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e5de7e09-0ffe-40f6-98f8-45e2807bd26e"
+      }
+    }
+  }
+}
