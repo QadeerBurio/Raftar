@@ -3,41 +3,48 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  TextInput,
+  Pressable,
   ScrollView,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   StatusBar,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Animated,
   Modal,
-  Linking,
   Switch,
+  Linking,
   InteractionManager
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import IconIonic from 'react-native-vector-icons/Ionicons';
-import IconFA from 'react-native-vector-icons/FontAwesome5';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import {
+  Car, CarTaxiFront, Motorbike, Snowflake, Crown, Clock, Ruler, X, Plus, Minus, ArrowRight,
+  ArrowLeft, UserPlus, Phone, User, Users, Map as MapIcon,
+} from 'lucide-react-native';
 import CustomPlacesAutocomplete from '../../components/common/CustomPlacesAutocomplete';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
 import { createRide } from '../../redux/slices/rideSlice';
 import { VEHICLE_TYPES } from '../../utils/constants';
 import api from '../../services/api';
-import { GOOGLE_MAPS_API_KEY } from '../../config/constants';
 import { getDirections } from '../../services/maps';
+import {
+  BottomSheet, Button, Chip, Header, IconButton, IconTile, Input, RouteInput, SelectCard,
+  PickupDot, DestinationSquare,
+} from '../../components/ui';
+import { palette, fonts, radius, shadows, spacing, typography } from '../../theme/tokens';
 
-const { width, height } = Dimensions.get('window');
+// Tariff icons by VEHICLE_TYPES id (UI only).
+const VEHICLE_ICONS = {
+  bike: Motorbike,
+  rickshaw: CarTaxiFront,
+  car: Car,
+  ac_car: Snowflake,
+  luxury_car: Crown,
+};
 
 const BookRideScreen = () => {
   const navigation = useNavigation();
@@ -45,8 +52,9 @@ const BookRideScreen = () => {
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
   const { currentRide } = useSelector(state => state.ride);
-  const { colors, isDark } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   const [loading, setLoading] = useState(false);
   const [pickup, setPickup] = useState(route.params?.pickup || null);
@@ -246,24 +254,6 @@ const BookRideScreen = () => {
     ]).start();
   };
 
-  const enhancedVehicleTypes = React.useMemo(() => {
-    const vehicleStyles = {
-      'bike': { bgLight: '#FFF7E0', bgDark: '#2A200B', iconColor: '#F5A623', icon: 'motorbike', iconType: 'material-community' },
-      'rickshaw': { bgLight: '#E1F5EE', bgDark: '#0D271F', iconColor: '#1D9E75', icon: 'rickshaw', iconType: 'material-community' },
-      'car': { bgLight: '#E6F1FB', bgDark: '#15212D', iconColor: '#378ADD', icon: 'car', iconType: 'material-community' },
-      'car-ac': { bgLight: '#EAF3DE', bgDark: '#1F2A14', iconColor: '#639922', icon: 'car-cool', iconType: 'material-community' },
-      'luxury': { bgLight: '#F3EAFB', bgDark: '#241634', iconColor: '#7F4FC9', icon: 'car-estate', iconType: 'material-community' },
-    };
-
-    return VEHICLE_TYPES.map(v => ({
-      ...v,
-      bgColor: isDark ? (vehicleStyles[v.id]?.bgDark || '#222') : (vehicleStyles[v.id]?.bgLight || '#F5F5F5'),
-      iconColor: vehicleStyles[v.id]?.iconColor || '#666',
-      icon: vehicleStyles[v.id]?.icon || 'car',
-      iconType: vehicleStyles[v.id]?.iconType || 'material-community',
-    }));
-  }, [isDark]);
-
   const vehicleTypes = VEHICLE_TYPES;
 
   const calculateFare = async () => {
@@ -420,113 +410,49 @@ const BookRideScreen = () => {
     }
   };
 
-  const getIcon = (icon, iconType, size, color) => {
-    switch (iconType) {
-      case 'material':
-        return <Icon name={icon} size={size} color={color} />;
-      case 'material-community':
-        return <IconMC name={icon} size={size} color={color} />;
-      case 'fontawesome':
-        return <IconFA name={icon} size={size} color={color} />;
-      default:
-        return <Icon name={icon} size={size} color={color} />;
-    }
-  };
+  const priceFor = (vehicle) => (vehicleFares[vehicle.id] ? Math.round(vehicleFares[vehicle.id]) : vehicle.price);
+  const selectedVehicleLabel = vehicleTypes.find(v => v.id === selectedVehicle)?.label || 'ride';
 
   const renderVehicleCard = (vehicle) => (
-    <TouchableOpacity
+    <SelectCard
       key={vehicle.id}
-      style={[
-        styles.vehicleCard,
-        selectedVehicle === vehicle.id && styles.vehicleCardSelected
-      ]}
+      style={styles.tariffCard}
+      icon={VEHICLE_ICONS[vehicle.id] || Car}
+      title={vehicle.label}
+      subtitle={`${vehicle.capacityLabel} · ${vehicle.time}`}
+      meta={`Rs ${priceFor(vehicle)}`}
+      selected={selectedVehicle === vehicle.id}
       onPress={() => setSelectedVehicle(vehicle.id)}
-      activeOpacity={0.9}
-    >
-      <View style={[
-        styles.vehicleCardContent,
-        selectedVehicle === vehicle.id && { borderColor: '#FFC107', backgroundColor: isDark ? '#2A200B' : '#FFFDF5' }
-      ]}>
-        <View style={[
-          styles.vehicleIconContainer,
-          { backgroundColor: vehicle.bgColor }
-        ]}>
-          {getIcon(vehicle.icon, vehicle.iconType, 32, vehicle.iconColor)}
-        </View>
-        <Text style={[
-          styles.vehicleLabel,
-          selectedVehicle === vehicle.id && { color: isDark ? '#FFF' : '#000' }
-        ]}>
-          {vehicle.label}
-        </Text>
-        <Text style={[styles.vehiclePrice, selectedVehicle === vehicle.id && { color: isDark ? '#FFF' : '#000', fontSize: 15 }]}>₨ {vehicleFares[vehicle.id] ? Math.round(vehicleFares[vehicle.id]) : vehicle.price}</Text>
-        <View style={styles.vehicleMeta}>
-          <View style={styles.vehicleMetaItem}>
-            <Icon name="person" size={12} color="#999" />
-            <Text style={styles.vehicleMetaText}>{vehicle.capacityLabel}</Text>
-          </View>
-          <View style={styles.vehicleMetaItem}>
-            <Icon name="access-time" size={12} color="#999" />
-            <Text style={styles.vehicleMetaText}>{vehicle.time}</Text>
-          </View>
-        </View>
-        {selectedVehicle === vehicle.id && (
-          <View style={[styles.selectedBadge, { backgroundColor: '#FFC107' }]}>
-            <Icon name="check" size={12} color="#000" />
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
+    />
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.background} />
 
       <KeyboardAvoidingView
-        style={styles.container}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <Animated.View style={[
-          styles.container,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
-        ]}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Icon name="arrow-back" size={24} color={colors.text || '#000'} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text || '#000' }]}>Choose a ride</Text>
-            <View style={{ width: 32 }} />
-          </View>
+        <Animated.View style={[styles.flex, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <Header title="Choose a ride" onBackPress={() => navigation.goBack()} />
 
           {/* Active Ride Banner */}
           {currentRide && (currentRide.status === 'searching' || currentRide.status === 'accepted' || currentRide.status === 'started') && (
-            <Animatable.View animation="fadeIn" duration={500}>
-              <TouchableOpacity
-                style={styles.activeRideBanner}
-                onPress={() => navigation.navigate('RideTracking', { rideId: currentRide._id })}
-                activeOpacity={0.8}
-              >
-                <View style={styles.activeRideBannerContent}>
-                  <View style={styles.activeRideIcon}>
-                    <Icon name="directions-car" size={20} color="#F9C349" />
-                  </View>
-                  <View>
-                    <Text style={styles.activeRideBannerTitle}>Active Ride</Text>
-                    <Text style={styles.activeRideBannerStatus}>{currentRide.status}</Text>
-                  </View>
-                </View>
-                <Icon name="arrow-forward" size={24} color="#F9C349" />
-              </TouchableOpacity>
-            </Animatable.View>
+            <Pressable
+              style={styles.activeRideBanner}
+              onPress={() => navigation.navigate('RideTracking', { rideId: currentRide._id })}
+              accessibilityRole="button"
+              accessibilityLabel={`You have an active ride, status ${currentRide.status}. Open it`}
+            >
+              <IconTile icon={Car} size="sm" bg={palette.accent} color={palette.primary} />
+              <View style={styles.flex}>
+                <Text style={styles.activeRideTitle}>Active ride</Text>
+                <Text style={styles.activeRideStatus}>{currentRide.status}</Text>
+              </View>
+              <ArrowRight size={20} color={colors.onPrimary} strokeWidth={2} />
+            </Pressable>
           )}
 
           <ScrollView
@@ -534,17 +460,17 @@ const BookRideScreen = () => {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Map Section */}
-            <Animatable.View animation="fadeIn" duration={600} style={styles.mapContainer} useNativeDriver>
+            {/* Map */}
+            <View style={styles.mapCard}>
               {locationLoading ? (
                 <View style={styles.mapLoading}>
-                  <ActivityIndicator size="large" color="#F9C349" />
-                  <Text style={styles.mapLoadingText}>Finding your location...</Text>
+                  <ActivityIndicator size="large" color={colors.accent} />
+                  <Text style={styles.mapLoadingText}>Finding your location</Text>
                 </View>
               ) : (
                 <MapView
                   ref={mapRef}
-                  style={styles.map}
+                  style={StyleSheet.absoluteFill}
                   initialRegion={{
                     latitude: pickup?.location?.coordinates[1] || 33.6844,
                     longitude: pickup?.location?.coordinates[0] || 73.0479,
@@ -559,10 +485,9 @@ const BookRideScreen = () => {
                         longitude: pickup.location.coordinates[0],
                       }}
                       title="Pickup"
+                      anchor={{ x: 0.5, y: 0.5 }}
                     >
-                      <View style={styles.pickupMarker}>
-                        <View style={styles.markerInner} />
-                      </View>
+                      <PickupDot size={18} />
                     </Marker>
                   )}
                   {dropoff?.location?.coordinates && (
@@ -572,263 +497,166 @@ const BookRideScreen = () => {
                         longitude: dropoff.location.coordinates[0],
                       }}
                       title="Dropoff"
+                      anchor={{ x: 0.5, y: 0.5 }}
                     >
-                      <View style={styles.dropoffMarker}>
-                        <Icon name="flag" size={18} color="#FFF" />
-                      </View>
+                      <DestinationSquare size={18} />
                     </Marker>
                   )}
                   {routeCoords.length > 0 && (
                     <Polyline
                       coordinates={routeCoords}
                       strokeWidth={5}
-                      strokeColor="#FFC107"
+                      strokeColor={palette.primary}
                     />
                   )}
                 </MapView>
               )}
 
-              {/* Trip ETA + distance, parsed from the Directions response */}
+              {/* Trip ETA + distance */}
               {routeInfo && (
-                <View style={styles.etaBar}>
-                  <View style={styles.etaItem}>
-                    <Icon name="schedule" size={16} color={colors.textSecondary} />
-                    <Text style={styles.etaValue}>{routeInfo.durationText}</Text>
-                  </View>
+                <View style={styles.etaPill}>
+                  <Clock size={14} color={colors.text} strokeWidth={2} />
+                  <Text style={styles.etaValue}>{routeInfo.durationText}</Text>
                   <View style={styles.etaDivider} />
-                  <View style={styles.etaItem}>
-                    <Icon name="straighten" size={16} color={colors.textSecondary} />
-                    <Text style={styles.etaValue}>{routeInfo.distanceText}</Text>
-                  </View>
-                  {routeInfo.isEstimate && (
-                    <Text style={styles.etaApprox}>approx.</Text>
-                  )}
+                  <Ruler size={14} color={colors.text} strokeWidth={2} />
+                  <Text style={styles.etaValue}>{routeInfo.distanceText}</Text>
+                  {routeInfo.isEstimate && <Text style={styles.etaApprox}>approx.</Text>}
                 </View>
               )}
-            </Animatable.View>
+            </View>
 
-            {/* Stops Section */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={100}
-              style={[styles.section, { paddingHorizontal: 20, paddingTop: 10 }]}
-              useNativeDriver
-            >
-              <View style={styles.stopsContainer}>
-                {stops.map((stop, index) => (
-                  <View key={index} style={styles.stopRow}>
-                    <Icon name="stop-circle" size={20} color="#FF9F43" />
-                    <Text style={styles.stopText} numberOfLines={1}>{stop.address}</Text>
-                    <TouchableOpacity onPress={() => handleRemoveStop(index)}>
-                      <Icon name="close" size={20} color="#999" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                {stops.length < 3 && (
-                  <TouchableOpacity
-                    style={styles.addStopButton}
-                    onPress={() => setShowStopModal(true)}
-                  >
-                    <Icon name="add-circle-outline" size={20} color="#F5A623" />
-                    <Text style={styles.addStopText}>Add Stop</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </Animatable.View>
-
-            {/* Vehicle Selection */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={200}
-              style={styles.section}
-              useNativeDriver
-            >
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Select Vehicle</Text>
-                <TouchableOpacity onPress={() => setShowVehicleModal(true)}>
-                  <Text style={styles.seeAll}>See All</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.vehicleScrollContent}
-              >
-                {enhancedVehicleTypes.map(vehicle => renderVehicleCard(vehicle))}
-              </ScrollView>
-            </Animatable.View>
-
-            {/* Guest Booking */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={250}
-              style={styles.section}
-              useNativeDriver
-            >
-              <TouchableOpacity
-                style={styles.guestToggleContainer}
-                onPress={() => setIsGuestBooking(!isGuestBooking)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.guestToggleLeft}>
-                  <View style={styles.guestToggleIcon}>
-                    <Icon name="person-add" size={20} color="#F5A623" />
-                  </View>
-                  <Text style={styles.guestToggleText}>Book for someone else</Text>
+            {/* Route summary and stops */}
+            <View style={styles.section}>
+              <RouteInput
+                pickupValue={pickup?.address}
+                destinationValue={dropoff?.address}
+                pickupPlaceholder="Pickup not set"
+                destinationPlaceholder="Destination not set"
+              />
+              {stops.map((stop, index) => (
+                <View key={index} style={styles.stopRow}>
+                  <View style={styles.stopMarker} />
+                  <Text style={styles.stopText} numberOfLines={1}>{stop.address}</Text>
+                  <IconButton icon={X} size={36} onPress={() => handleRemoveStop(index)} accessibilityLabel={`Remove stop ${stop.address}`} />
                 </View>
+              ))}
+              {stops.length < 3 && (
+                <Chip label="Add stop" icon={Plus} onPress={() => setShowStopModal(true)} style={styles.addStop} />
+              )}
+            </View>
+
+            {/* Vehicle selection */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Choose your ride</Text>
+                <Pressable onPress={() => setShowVehicleModal(true)} hitSlop={12} accessibilityRole="button">
+                  <Text style={styles.link}>See all</Text>
+                </Pressable>
+              </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tariffRow}
+            >
+              {vehicleTypes.map(vehicle => renderVehicleCard(vehicle))}
+            </ScrollView>
+
+            {/* Guest booking */}
+            <View style={styles.section}>
+              <Pressable
+                style={styles.guestToggle}
+                onPress={() => setIsGuestBooking(!isGuestBooking)}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: isGuestBooking }}
+                accessibilityLabel="Book for someone else"
+              >
+                <IconTile icon={UserPlus} size="md" />
+                <Text style={styles.guestToggleText}>Book for someone else</Text>
                 <Switch
                   value={isGuestBooking}
                   onValueChange={setIsGuestBooking}
-                  trackColor={{ false: '#E0E0E0', true: '#FFC107' }}
-                  thumbColor={isGuestBooking ? '#FFFFFF' : '#FFFFFF'}
-                  ios_backgroundColor="#E0E0E0"
+                  trackColor={{ false: colors.switchTrackOff, true: colors.primary }}
+                  thumbColor={palette.white}
+                  ios_backgroundColor={colors.switchTrackOff}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
                 />
-              </TouchableOpacity>
+              </Pressable>
 
               {isGuestBooking && (
-                <Animatable.View animation="fadeIn" duration={300} style={styles.guestInputContainer} useNativeDriver>
-                  <View style={styles.guestInputWrapper}>
-                    <Icon name="phone" size={20} color="#F9C349" style={styles.guestInputIcon} />
-                    <TextInput
-                      style={styles.guestInput}
-                      placeholder="Guest Phone Number *"
-                      placeholderTextColor="#999"
-                      keyboardType="phone-pad"
-                      value={guestPhone}
-                      onChangeText={setGuestPhone}
-                    />
-                  </View>
-                  <View style={styles.guestInputWrapper}>
-                    <Icon name="person" size={20} color="#F9C349" style={styles.guestInputIcon} />
-                    <TextInput
-                      style={styles.guestInput}
-                      placeholder="Guest Name (Optional)"
-                      placeholderTextColor="#999"
-                      value={guestName}
-                      onChangeText={setGuestName}
-                    />
-                  </View>
-                  <View style={styles.guestInputWrapper}>
-                    <Icon name="people" size={20} color="#F9C349" style={styles.guestInputIcon} />
-                    <TextInput
-                      style={styles.guestInput}
-                      placeholder="Relation (e.g. Mother, Friend)"
-                      placeholderTextColor="#999"
-                      value={guestRelation}
-                      onChangeText={setGuestRelation}
-                    />
-                  </View>
-                  <View style={[styles.guestInputWrapper, styles.guestInputWrapperNote]}>
-                    <Icon name="notes" size={20} color="#F9C349" style={styles.guestInputIcon} />
-                    <TextInput
-                      style={[styles.guestInput, styles.guestInputNote]}
-                      placeholder="Comment / Note for Driver"
-                      placeholderTextColor="#999"
-                      multiline
-                      numberOfLines={3}
-                      value={guestNote}
-                      onChangeText={setGuestNote}
-                    />
-                  </View>
-                </Animatable.View>
+                <View style={styles.guestFields}>
+                  <Input
+                    label="Guest phone number"
+                    icon={Phone}
+                    placeholder="03001234567"
+                    keyboardType="phone-pad"
+                    value={guestPhone}
+                    onChangeText={setGuestPhone}
+                  />
+                  <Input
+                    label="Guest name (optional)"
+                    icon={User}
+                    placeholder="Full name"
+                    value={guestName}
+                    onChangeText={setGuestName}
+                  />
+                  <Input
+                    label="Relation (optional)"
+                    icon={Users}
+                    placeholder="For example Mother or Friend"
+                    value={guestRelation}
+                    onChangeText={setGuestRelation}
+                  />
+                  <Input
+                    label="Note for driver (optional)"
+                    placeholder="Anything the driver should know"
+                    multiline
+                    numberOfLines={3}
+                    value={guestNote}
+                    onChangeText={setGuestNote}
+                  />
+                </View>
               )}
-            </Animatable.View>
+            </View>
 
-            {/* Price Selection */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={300}
-              style={[styles.section, { marginBottom: 40 }]}
-              useNativeDriver
-            >
-              <Text style={styles.sectionTitle}>Select Your Price</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TouchableOpacity
-                  style={styles.priceStepperBtn}
-                  onPress={() => handlePriceStep(-1)}
-                >
-                  <Icon name="remove" size={24} color={colors.text || '#000'} />
-                </TouchableOpacity>
-
+            {/* Price selection */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Your fare offer</Text>
+              <View style={styles.priceRow}>
+                <IconButton icon={Minus} onPress={() => handlePriceStep(-1)} accessibilityLabel="Lower fare" />
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.priceScrollContent}
-                  style={{ flex: 1, marginHorizontal: 8 }}
+                  contentContainerStyle={styles.priceChips}
+                  style={styles.flex}
                 >
                   {getPriceOptions(estimatedFare).map((price, index) => (
-                    <View key={index} style={styles.priceOptionWrapper}>
-                      <TouchableOpacity
-                        style={[
-                          styles.priceOptionCard,
-                          selectedPriceOption === price && styles.priceOptionSelected
-                        ]}
-                        onPress={() => setSelectedPriceOption(price)}
-                      >
-                        <Text style={[
-                          styles.priceOptionText,
-                          selectedPriceOption === price && styles.priceOptionTextSelected
-                        ]}>
-                          ₨ {price}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                    <Chip
+                      key={index}
+                      label={`Rs ${price}`}
+                      selected={selectedPriceOption === price}
+                      onPress={() => setSelectedPriceOption(price)}
+                    />
                   ))}
                 </ScrollView>
-
-                <TouchableOpacity
-                  style={styles.priceStepperBtn}
-                  onPress={() => handlePriceStep(1)}
-                >
-                  <Icon name="add" size={24} color={colors.text || '#000'} />
-                </TouchableOpacity>
+                <IconButton icon={Plus} onPress={() => handlePriceStep(1)} accessibilityLabel="Raise fare" />
               </View>
-
-              {selectedPriceOption > 0 && (
-                <TouchableOpacity
-                  style={{
-                    marginTop: 24,
-                    borderRadius: 14,
-                    overflow: 'hidden',
-                  }}
-                  onPress={() => handleBookRide(selectedPriceOption)}
-                  disabled={loading || searchingDriver}
-                >
-                  <LinearGradient
-                    colors={['#FFC107', '#FFB300']}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      paddingVertical: 16,
-                      gap: 8,
-                    }}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    {loading || searchingDriver ? (
-                      <ActivityIndicator color="#000" />
-                    ) : (
-                      <>
-                        <Text style={{ fontSize: 18, color: '#000000', fontWeight: '700' }}>Find Driver</Text>
-                        <Icon name="arrow-forward" size={20} color="#000000" />
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-            </Animatable.View>
-
-            <View style={styles.bottomSpacer} />
+            </View>
           </ScrollView>
 
-          {/* Vehicle Modal */}
+          {/* Sticky action bar */}
+          {selectedPriceOption > 0 && (
+            <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.l }]}>
+              <Button
+                title={`Book ${selectedVehicleLabel} · Rs ${selectedPriceOption}`}
+                onPress={() => handleBookRide(selectedPriceOption)}
+                loading={loading || searchingDriver}
+              />
+            </View>
+          )}
+
+          {/* All vehicles sheet */}
           <Modal
             visible={showVehicleModal}
             animationType="slide"
@@ -836,78 +664,46 @@ const BookRideScreen = () => {
             onRequestClose={() => setShowVehicleModal(false)}
           >
             <View style={styles.modalOverlay}>
-              <TouchableOpacity
-                style={styles.modalBackdrop}
-                activeOpacity={1}
+              <Pressable
+                style={styles.flex}
                 onPress={() => setShowVehicleModal(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close vehicle list"
               />
-              <Animatable.View
-                animation="slideInUp"
-                duration={400}
-                style={styles.modalContent}
-              >
+              <BottomSheet style={{ paddingBottom: insets.bottom + spacing.xl, maxHeight: '80%' }}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Select Vehicle</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowVehicleModal(false)}
-                    style={styles.modalClose}
-                  >
-                    <Icon name="close" size={24} color={colors.text} />
-                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>All vehicles</Text>
+                  <IconButton icon={X} onPress={() => setShowVehicleModal(false)} accessibilityLabel="Close" />
                 </View>
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalList}>
                   {vehicleTypes.map(vehicle => (
-                    <TouchableOpacity
+                    <SelectCard
                       key={vehicle.id}
-                      style={[
-                        styles.modalVehicleItem,
-                        selectedVehicle === vehicle.id && styles.modalVehicleSelected
-                      ]}
+                      layout="row"
+                      icon={VEHICLE_ICONS[vehicle.id] || Car}
+                      title={vehicle.label}
+                      subtitle={`${vehicle.capacityLabel} · ${vehicle.time}`}
+                      meta={`Rs ${priceFor(vehicle)}`}
+                      selected={selectedVehicle === vehicle.id}
                       onPress={() => {
                         setSelectedVehicle(vehicle.id);
                         setShowVehicleModal(false);
                       }}
-                    >
-                      <View style={[
-                        styles.modalVehicleIcon,
-                        { backgroundColor: vehicle.color + '15' }
-                      ]}>
-                        {getIcon(vehicle.icon, vehicle.iconType, 28, vehicle.color)}
-                      </View>
-                      <View style={styles.modalVehicleInfo}>
-                        <Text style={styles.modalVehicleLabel}>{vehicle.label}</Text>
-                        <Text style={styles.modalVehicleCapacity}>
-                          {vehicle.capacityLabel} • {vehicle.time}
-                        </Text>
-                      </View>
-                      <Text style={styles.modalVehiclePrice}>₨ {vehicle.price}</Text>
-                      {selectedVehicle === vehicle.id && (
-                        <Icon name="check-circle" size={24} color={vehicle.color} />
-                      )}
-                    </TouchableOpacity>
+                    />
                   ))}
                 </ScrollView>
-              </Animatable.View>
+              </BottomSheet>
             </View>
           </Modal>
 
-          {/* Map Picker Modal */}
-          <Modal visible={mapPickerVisible} animationType="slide">
-            <View style={styles.pickerModalContainer}>
-              <View style={styles.pickerModalHeader}>
-                <TouchableOpacity onPress={() => setMapPickerVisible(false)} style={styles.pickerBackBtn}>
-                  <Icon name="arrow-back" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={styles.pickerModalTitle}>
-                  Select {mapPickerType === 'pickup' ? 'Pickup' : mapPickerType === 'stop' ? 'Stop' : 'Dropoff'}
-                </Text>
-                <View style={{ width: 32 }} />
-              </View>
+          {/* Map picker */}
+          <Modal visible={mapPickerVisible} animationType="slide" onRequestClose={() => setMapPickerVisible(false)}>
+            <View style={styles.pickerContainer}>
               {mapPickerCoords && (
                 <MapView
                   key={`${mapPickerType}-${mapPickerVisible}`}
                   ref={pickerMapRef}
-                  style={styles.pickerMap}
+                  style={StyleSheet.absoluteFill}
                   initialRegion={{
                     latitude: mapPickerCoords.latitude,
                     longitude: mapPickerCoords.longitude,
@@ -918,32 +714,34 @@ const BookRideScreen = () => {
                   showsUserLocation
                 />
               )}
-              <View style={styles.pickerCenterPin}>
-                <Icon name="location-on" size={44} color={mapPickerType === 'pickup' ? "#4ECDC4" : mapPickerType === 'stop' ? "#FF9F43" : "#FF6B6B"} />
+              <View style={[styles.pickerTop, { top: insets.top + spacing.l }]} pointerEvents="box-none">
+                <IconButton icon={ArrowLeft} shape="round" size={48} onPress={() => setMapPickerVisible(false)} accessibilityLabel="Go back" />
+                <View style={styles.pickerTitlePill}>
+                  <Text style={styles.pickerTitle}>
+                    Select {mapPickerType === 'pickup' ? 'pickup' : mapPickerType === 'stop' ? 'stop' : 'destination'}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.pickerBottomCard}>
-                <Text style={styles.pickerAddressLabel}>Selected Location</Text>
-                <Text style={styles.pickerAddressText}>{mapPickerAddress}</Text>
-                <TouchableOpacity style={styles.pickerConfirmBtn} onPress={confirmMapPicker}>
-                  <Text style={styles.pickerConfirmText}>Confirm Location</Text>
-                </TouchableOpacity>
+              <View style={styles.pickerCenterPin} pointerEvents="none">
+                {mapPickerType === 'pickup' ? <PickupDot size={26} /> : mapPickerType === 'stop' ? <View style={styles.stopPin} /> : <DestinationSquare size={26} />}
+                <View style={styles.pinStem} />
               </View>
+              <BottomSheet style={[styles.pickerSheet, { paddingBottom: insets.bottom + spacing.xl }]}>
+                <Text style={styles.overline}>Selected location</Text>
+                <Text style={styles.pickerAddress} numberOfLines={2}>{mapPickerAddress}</Text>
+                <Button title="Confirm location" onPress={confirmMapPicker} />
+              </BottomSheet>
             </View>
           </Modal>
         </Animated.View>
-        {/* Add Stop Modal */}
-        <Modal visible={showStopModal} animationType="slide">
-          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            <View style={styles.pickerModalHeader}>
-              <TouchableOpacity onPress={() => setShowStopModal(false)} style={styles.pickerBackBtn}>
-                <Icon name="arrow-back" size={24} color={colors.text} />
-              </TouchableOpacity>
-              <Text style={styles.pickerModalTitle}>Add Stop</Text>
-              <View style={{ width: 32 }} />
-            </View>
-            <View style={{ flex: 1, padding: 20 }}>
+
+        {/* Add stop */}
+        <Modal visible={showStopModal} animationType="slide" onRequestClose={() => setShowStopModal(false)}>
+          <SafeAreaView style={styles.safeArea}>
+            <Header title="Add stop" onBackPress={() => setShowStopModal(false)} />
+            <View style={styles.stopModalBody}>
               <CustomPlacesAutocomplete
-                placeholder="Search for a stop..."
+                placeholder="Search for a stop"
                 onPress={(data, details = null) => {
                   setStops([...stops, {
                     address: data.description,
@@ -956,773 +754,105 @@ const BookRideScreen = () => {
                   setShowStopModal(false);
                 }}
                 styles={{
-                  textInputContainer: styles.pickupInputContainer,
-                  textInput: styles.pickupTextInput,
-                  container: styles.autocompleteContainer,
-                  listView: styles.autocompleteList,
+                  textInputContainer: styles.stopInputContainer,
+                  textInput: styles.stopTextInput,
+                  container: styles.acContainer,
                 }}
+                placeholderTextColor={colors.placeholder}
                 renderRightButton={() => (
-                  <TouchableOpacity onPress={() => openMapPicker('stop')} style={styles.mapIconBtn}>
-                    <Icon name="map" size={20} color="#FF9F43" />
-                  </TouchableOpacity>
+                  <IconButton icon={MapIcon} size={40} onPress={() => openMapPicker('stop')} accessibilityLabel="Pick stop on map" style={styles.transparentBtn} />
                 )}
               />
             </View>
           </SafeAreaView>
         </Modal>
-
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-const createStyles = (colors, isDark) => StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background || colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background || colors.background,
+const createStyles = (colors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  scrollContent: { paddingBottom: 120 },
 
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-
-    paddingBottom: 15,
-    backgroundColor: colors.background,
-    marginTop: 34
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    letterSpacing: 0.5,
-  },
-  notificationButton: {
-    padding: 4,
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#F9C349',
-  },
   activeRideBanner: {
-    backgroundColor: colors.accent + '18',
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#F9C349',
+    flexDirection: 'row', alignItems: 'center', gap: spacing.l,
+    marginHorizontal: spacing.screen, marginBottom: spacing.l, padding: spacing.l,
+    borderRadius: radius.card, backgroundColor: colors.primary,
   },
-  activeRideBannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  activeRideTitle: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.onPrimary },
+  activeRideStatus: { ...typography.small, color: colors.onPrimaryMuted, textTransform: 'capitalize' },
+
+  mapCard: {
+    height: 240, marginHorizontal: spacing.screen, borderRadius: radius.cardLarge,
+    overflow: 'hidden', backgroundColor: colors.surface,
   },
-  activeRideIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F9C34915',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+  mapLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.l },
+  mapLoadingText: { ...typography.small, color: colors.textSecondary },
+  etaPill: {
+    position: 'absolute', left: spacing.l, bottom: spacing.l,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.card, borderRadius: radius.chip, paddingHorizontal: spacing.l, height: 36, ...shadows.soft,
   },
-  activeRideBannerTitle: {
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  activeRideBannerStatus: {
-    color: '#666',
-    fontSize: 12,
-    textTransform: 'capitalize',
-  },
-  mapContainer: {
-    height: 350,
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: colors.card,
-    position: 'relative',
-  },
-  etaBar: {
-    position: 'absolute',
-    bottom: 12,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: colors.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    elevation: 4,
-  },
-  etaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  etaValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  etaDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 16,
-    marginHorizontal: 12,
-    backgroundColor: colors.border,
-  },
-  etaApprox: {
-    marginLeft: 8,
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  mapLoading: {
-    flex: 1,
-    backgroundColor: colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapLoadingText: {
-    color: colors.textSecondary,
-    marginTop: 12,
-    fontSize: 14,
-  },
-  map: {
-    flex: 1,
-  },
-  mapOverlayBtn: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  pickupMarker: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(78, 205, 196, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#4ECDC4',
-  },
-  markerInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4ECDC4',
-  },
-  dropoffMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FF6B6B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  locationSection: {
-    backgroundColor: colors.background,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  locationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  locationTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  locationAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#F9C34915',
-    borderRadius: 20,
-  },
-  locationActionText: {
-    color: '#F9C349',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  locationInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  locationDot: {
-    width: 24,
-    alignItems: 'center',
-    marginRight: 12,
-    paddingTop: 16,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  dotLine: {
-    width: 2,
-    height: 20,
-    backgroundColor: colors.border,
-    marginTop: 4,
-  },
-  locationInputContainer: {
-    flex: 1,
-  },
-  pickupInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardElevated,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pickupTextInput: {
-    color: colors.text,
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 14,
-    backgroundColor: 'transparent',
-  },
-  dropoffInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardElevated,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dropoffTextInput: {
-    color: colors.text,
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 14,
-    backgroundColor: 'transparent',
-  },
-  autocompleteContainer: {
-    zIndex: 999,
-  },
-  autocompleteList: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    marginTop: 4,
-    maxHeight: 200,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  autocompleteRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.card,
-  },
-  autocompleteDescription: {
-    color: colors.text,
-    fontSize: 14,
-  },
-  locationDivider: {
-    height: 0,
-    marginVertical: 0,
-  },
-  farePreview: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  farePreviewLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  farePreviewIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F9C34915',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  farePreviewText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  farePreviewDistance: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.card,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  distanceText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  section: {
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  seeAll: {
-    color: '#F9C349',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  vehicleScrollContent: {
-    paddingHorizontal: 2,
-    gap: 12,
-  },
-  vehicleCard: {
-    width: 140,
-    marginRight: 12,
-  },
-  vehicleCardSelected: {
-    transform: [{ scale: 1.02 }],
-  },
-  vehicleCardContent: {
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  vehicleIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  stopsContainer: {
-    backgroundColor: colors.cardElevated,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  etaValue: { ...typography.small, fontFamily: fonts.bold, color: colors.text },
+  etaDivider: { width: 1, height: 14, backgroundColor: colors.border, marginHorizontal: 4 },
+  etaApprox: { ...typography.small, fontSize: 12, color: colors.textSecondary },
+
+  section: { paddingHorizontal: spacing.screen, marginTop: spacing.xxl },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { ...typography.cardTitle, color: colors.text, marginBottom: spacing.l },
+  link: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.accent, marginBottom: spacing.l },
+  overline: { ...typography.overline, color: colors.textSecondary, marginBottom: spacing.s },
+
   stopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.l, marginTop: spacing.s,
+    backgroundColor: colors.surface, borderRadius: radius.field, paddingLeft: spacing.xl, paddingRight: spacing.xs, minHeight: 48,
   },
-  stopText: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.text,
-    marginLeft: 12,
+  stopMarker: { width: 12, height: 12, borderRadius: 6, backgroundColor: palette.goldDark },
+  stopText: { ...typography.body, color: colors.text, flex: 1 },
+  addStop: { marginTop: spacing.l },
+
+  tariffRow: { paddingHorizontal: spacing.screen, gap: spacing.l },
+  tariffCard: { width: 132 },
+
+  guestToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.l,
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radius.card, padding: spacing.l, minHeight: 64,
   },
-  addStopButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    backgroundColor: isDark ? '#2A200B' : '#FFFDF5',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: isDark ? '#3A2E15' : '#FDECA6',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
+  guestToggleText: { ...typography.bodyStrong, color: colors.text, flex: 1 },
+  guestFields: { marginTop: spacing.xl },
+
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.s },
+  priceChips: { gap: spacing.s, paddingHorizontal: spacing.xs, alignItems: 'center' },
+
+  footer: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    paddingHorizontal: spacing.screen, paddingTop: spacing.l,
+    backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border,
   },
-  addStopText: {
-    fontSize: 14,
-    color: '#F5A623',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  vehicleLabel: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  vehiclePrice: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  vehicleMeta: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  vehicleMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  vehicleMetaText: {
-    color: colors.textSecondary,
-    fontSize: 10,
-  },
-  selectedBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  guestToggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.cardElevated,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  guestToggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  guestToggleIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: isDark ? '#2A200B' : '#FFF7E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  guestToggleText: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  guestInputContainer: {
-    backgroundColor: colors.cardElevated,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginTop: 10,
-  },
-  guestInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-  },
-  guestInputWrapperNote: {
-    alignItems: 'flex-start',
-    paddingTop: 12,
-    minHeight: 80,
-  },
-  guestInputIcon: {
-    marginRight: 10,
-  },
-  guestInput: {
-    color: colors.text,
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-  },
-  guestInputNote: {
-    paddingTop: 0,
-    minHeight: 60,
-  },
-  priceScrollContent: {
-    paddingHorizontal: 2,
-    gap: 12,
-  },
-  priceOptionWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  priceOptionCard: {
-    backgroundColor: isDark ? '#222' : colors.card,
-    borderRadius: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  priceOptionSelected: {
-    backgroundColor: '#FFC107',
-  },
-  priceOptionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  priceOptionTextSelected: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  priceStepperBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: isDark ? '#222' : colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  confirmPriceTick: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.text,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  bottomSpacer: {
-    height: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 20,
-    maxHeight: height * 0.7,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  modalClose: {
-    padding: 4,
-  },
-  modalVehicleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardElevated,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  modalVehicleSelected: {
-    borderColor: '#F9C349',
-    backgroundColor: '#F9C34915',
-  },
-  modalVehicleIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  modalVehicleInfo: {
-    flex: 1,
-  },
-  modalVehicleLabel: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalVehicleCapacity: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  modalVehiclePrice: {
-    color: '#F9C349',
-    fontSize: 16,
-    fontWeight: '700',
-    marginRight: 8,
-  },
-  mapIconBtn: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    height: 48,
-  },
-  pickerModalContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  pickerModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'ios' ? 50 : 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  pickerBackBtn: {
-    padding: 4,
-  },
-  pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  pickerMap: {
-    flex: 1,
-  },
-  pickerCenterPin: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginLeft: -22,
-    marginTop: -44,
-    zIndex: 10,
-    backgroundColor: colors.background,
-    borderRadius: 28,
-    padding: 4,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pickerBottomCard: {
-    backgroundColor: colors.background,
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  pickerAddressLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  pickerAddressText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 20,
-  },
-  pickerConfirmBtn: {
-    backgroundColor: '#F9C349',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  pickerConfirmText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.l },
+  modalTitle: { ...typography.title, color: colors.text },
+  modalList: { gap: spacing.m },
+
+  pickerContainer: { flex: 1, backgroundColor: colors.surface },
+  pickerTop: { position: 'absolute', left: spacing.screen, right: spacing.screen, flexDirection: 'row', alignItems: 'center', gap: spacing.l },
+  pickerTitlePill: { backgroundColor: colors.card, borderRadius: radius.chip, paddingHorizontal: spacing.xl, height: 48, justifyContent: 'center', ...shadows.soft },
+  pickerTitle: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.text },
+  pickerCenterPin: { position: 'absolute', top: '50%', left: '50%', marginLeft: -13, marginTop: -42, alignItems: 'center', width: 26 },
+  pinStem: { width: 3, height: 16, backgroundColor: palette.primary, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
+  stopPin: { width: 26, height: 26, borderRadius: 13, backgroundColor: palette.goldDark, borderWidth: 3, borderColor: palette.white },
+  pickerSheet: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  pickerAddress: { ...typography.cardTitle, color: colors.text, marginBottom: spacing.xl },
+
+  stopModalBody: { flex: 1, padding: spacing.screen },
+  acContainer: { zIndex: 1 },
+  stopInputContainer: { minHeight: 56, borderRadius: radius.field, backgroundColor: colors.surface, paddingLeft: spacing.xl },
+  stopTextInput: { ...typography.body, color: colors.text, height: 56 },
+  transparentBtn: { backgroundColor: 'transparent' },
 });
 
 export default BookRideScreen;

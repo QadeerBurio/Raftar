@@ -9,6 +9,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { autocompletePlaces, getPlaceDetails } from '../../services/maps';
+import { palette, radius, shadows, typography } from '../../theme/tokens';
 
 const CustomPlacesAutocomplete = forwardRef(({ 
   placeholder, 
@@ -113,12 +114,12 @@ const CustomPlacesAutocomplete = forwardRef(({
         <TextInput
           style={[styles.input, customStyles?.textInput]}
           placeholder={placeholder}
-          placeholderTextColor={placeholderTextColor || '#666'}
+          placeholderTextColor={placeholderTextColor || palette.placeholder}
           value={query}
           onChangeText={handleTextChange}
         />
         {renderRightButton && renderRightButton()}
-        {loading && <ActivityIndicator size="small" color="#FFD700" style={[styles.loader, renderRightButton && { right: 40 }]} />}
+        {loading && <ActivityIndicator size="small" color={palette.primary} style={[styles.loader, renderRightButton && { right: 40 }]} />}
       </View>
       
       {showDropdown && predictions.length > 0 && (
@@ -155,6 +156,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 48,
+    ...typography.body,
+    color: palette.text,
   },
   loader: {
     position: 'absolute',
@@ -165,18 +168,26 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
+    borderRadius: radius.field,
+    marginTop: 6,
+    overflow: 'hidden',
+    ...shadows.soft,
     elevation: 5,
     zIndex: 1000,
   },
   predictionRow: {
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
+    borderBottomColor: palette.border,
   },
   predictionText: {
+    ...typography.body,
     fontSize: 14,
-    color: '#333',
+    color: palette.text,
   }
 });
 
